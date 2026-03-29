@@ -5,6 +5,7 @@ import java.util.Optional;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RestController;
@@ -19,6 +20,11 @@ import com.port.auth.types.User;
 
 @RestController
 public class AuthPortController {
+    private Storage st;
+
+    public AuthPortController() {
+        this.st = new Storage();
+    }
 
     @GetMapping("/")
     public String index() {
@@ -31,12 +37,11 @@ public class AuthPortController {
         if (!contentType.equals("application/json")) {
             return ResponseEntity.status(400).body("Bad request");
         }
-        Storage st = new Storage();
-        Optional<User> user = st.getUserWithEmail(req.getEmail());
+        Optional<User> user = this.st.getUserWithEmail(req.getEmail());
         if (!user.isEmpty()) {
             return ResponseEntity.status(418).body("Already exists");
         }
-        if (!st.createNewUser(req.getEmail(), req.getPassword(), req.getName(), req.getSurname())) {
+        if (!this.st.createNewUser(req.getEmail(), req.getPassword(), req.getName(), req.getSurname())) {
             return ResponseEntity.status(500).body("Internal server error");
         }
         NewUserRes res = new NewUserRes(200, "OK");
@@ -50,15 +55,14 @@ public class AuthPortController {
         if (!contentType.equals("application/json")) {
             return ResponseEntity.status(400).body("Bad request");
         }
-        Storage st = new Storage();
-        Optional<User> user = st.getUserWithEmail(req.getEmail());
+        Optional<User> user = this.st.getUserWithEmail(req.getEmail());
         if (user.isEmpty()) {
             return ResponseEntity.status(404).body("Not found");
         }
         if (!req.getPassword().equals(user.get().getPassword())) {
             return ResponseEntity.status(401).body("Unauthorized");
         }
-        LoginResult result = st.loginUser(req.getEmail(), req.getPassword(), req.getClientIdentifier(),
+        LoginResult result = this.st.loginUser(req.getEmail(), req.getPassword(), req.getClientIdentifier(),
                 req.getRemoteAddr());
         switch (result.status) {
             case SUCCESS:
@@ -76,8 +80,26 @@ public class AuthPortController {
         return ResponseEntity.ok().body("");
     }
 
-    @PostMapping("/signOut")
-    public ResponseEntity<String> signOut(@RequestHeader("Content-Type") String contentType, @RequestBody SignOutReq req) {
-        return ResponseEntity.ok().body("");
+    @PutMapping("/signOut")
+    public ResponseEntity<String> signOut(@RequestHeader("Content-Type") String contentType,
+            @RequestBody SignOutReq req) {
+        if (!contentType.equals("application/json")) {
+            return ResponseEntity.status(400).body("Bad request");
+        }
+        Optional<User> user = this.st.getUserWithEmail(req.getEmail());
+        if (user.isEmpty()) {
+            return ResponseEntity.status(404).body("Not found");
+        }
+        if (!this.st.userIsLoggedIn(user.get().getAuthToken(), req.getIpAddr(), req.getClientIdentifier())) {
+            return ResponseEntity.status(304).body("Not signed in");
+        }
+
+        if (this.st.signOutUser(req.getEmail(), req.getClientIdentifier(), req.getIpAddr())) {
+            return ResponseEntity.ok()
+                    .header("Content-Type", "application/json")
+                    .body(new NewUserRes(200, "OK")
+                            .toJsonString());
+        }
+        return ResponseEntity.status(500).body("Internal server error");
     }
 }

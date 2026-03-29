@@ -54,13 +54,12 @@ public class Storage {
         }
     }
 
-    private boolean userLoggedIn(String userToken, String ipAddr) {
+    public boolean userIsLoggedIn(String userToken, String ipAddr, String clientIdentifier) {
         try {
-            String query = "SELECT * FROM auth_key WHERE user_token = '%s' AND ip_addr = '%s'";
-            ResultSet rs = this.statement.executeQuery(String.format(query, userToken, ipAddr));
+            String query = "SELECT * FROM auth_key WHERE user_token = '%s' AND ip_addr = '%s' AND client_identifier = '%s'";
+            ResultSet rs = this.statement.executeQuery(String.format(query, userToken, ipAddr, clientIdentifier));
             AuthKey authKey = null;
             while (rs.next()) {
-                System.out.println(rs);
                 authKey = new AuthKey(rs.getInt("id"), rs.getString("ip_addr"), rs.getString("user_token"),
                         rs.getString("client_token"), rs.getInt("token_expiry_date"),
                         rs.getString("client_identifier"));
@@ -105,7 +104,7 @@ public class Storage {
             firstTimeLogin = false;
             userToken = user.get().getAuthToken();
         }
-        if (!firstTimeLogin && this.userLoggedIn(userToken, ipAddr)) {
+        if (!firstTimeLogin && this.userIsLoggedIn(userToken, ipAddr, clientIdentifier)) {
             return new LoginResult("", LoginStatus.ALREADY_LOGGED_IN);
         }
         String clientToken = UUID.randomUUID().toString() + UUID.randomUUID().toString();
@@ -125,5 +124,30 @@ public class Storage {
             return new LoginResult("", LoginStatus.FAILIURE);
         }
         return new LoginResult(userToken + "+" + clientToken, LoginStatus.SUCCESS);
+    }
+
+    public boolean signOutUser(String email, String clientIdentifier, String ipAddr) {
+        try {
+            Optional<User> user = this.getUserWithEmail(email);
+            this.statement.execute("BEGIN TRANSACTION");
+            String removeAuthKey = "DELETE FROM auth_key WHERE ip_addr = '%s' AND user_token = '%s' AND client_identifier = '%s'";
+            this.statement.execute(String.format(removeAuthKey, ipAddr, user.get().getAuthToken(), clientIdentifier));
+            user.get().decrementLoggedInCount();
+            String updateUser;
+            if (user.get().getLoggedInCount() == 0) {
+                System.out.println("Complete log out");
+                updateUser = "UPDATE user SET auth_token = '', logged_in_count = 0 WHERE email = '%s'";
+            } else {
+                System.out.println("Partial log out");
+                updateUser = "UPDATE user SET logged_in_count = " + user.get().getLoggedInCount() + " WHERE email = '%s'";
+            }
+            this.statement.execute(String.format(updateUser, email));
+            this.statement.execute("COMMIT");
+            return true;
+
+        } catch (SQLException e) {
+            System.err.println(e);
+            return false;
+        }
     }
 }
