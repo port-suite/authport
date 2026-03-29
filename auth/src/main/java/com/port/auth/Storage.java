@@ -43,8 +43,10 @@ public class Storage {
 
     public boolean createNewUser(String email, String password, String name, String surname) {
         try {
+            this.statement.execute("BEGIN TRANSACTION");
             String query = "INSERT INTO user(email, password, name, surname, logged_in_count) values('%s', '%s', '%s', '%s', 0)";
             this.statement.executeUpdate(String.format(query, email, password, name, surname));
+            this.statement.execute("COMMIT");
             return true;
         } catch (SQLException e) {
             e.printStackTrace(System.err);
@@ -109,6 +111,7 @@ public class Storage {
         String clientToken = UUID.randomUUID().toString() + UUID.randomUUID().toString();
         long time = ZonedDateTime.now().plusMonths(1).toEpochSecond();
         try {
+            this.statement.execute("BEGIN TRANSACTION");
             String userQuery = "UPDATE user SET auth_token = '%s', logged_in_count = %d WHERE email = '%s'";
             user.get().incrementLoggedInCount();
             this.statement
@@ -116,6 +119,7 @@ public class Storage {
             String authKeyQuery = "INSERT INTO auth_key(ip_addr, user_token, client_token, token_expiry_date, client_identifier) values('%s', '%s', '%s', "
                     + time + ", '%s')";
             this.statement.execute(String.format(authKeyQuery, ipAddr, userToken, clientToken, clientIdentifier));
+            this.statement.execute("COMMIT");
         } catch (SQLException e) {
             System.err.println(e);
             return new LoginResult("", LoginStatus.FAILIURE);

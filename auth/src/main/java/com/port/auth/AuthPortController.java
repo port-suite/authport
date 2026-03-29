@@ -14,6 +14,7 @@ import com.port.auth.types.LoginReq;
 import com.port.auth.types.LoginRes;
 import com.port.auth.types.NewUserReq;
 import com.port.auth.types.NewUserRes;
+import com.port.auth.types.SignOutReq;
 import com.port.auth.types.User;
 
 @RestController
@@ -54,11 +55,14 @@ public class AuthPortController {
         if (user.isEmpty()) {
             return ResponseEntity.status(404).body("Not found");
         }
+        if (!req.getPassword().equals(user.get().getPassword())) {
+            return ResponseEntity.status(401).body("Unauthorized");
+        }
         LoginResult result = st.loginUser(req.getEmail(), req.getPassword(), req.getClientIdentifier(),
                 req.getRemoteAddr());
         switch (result.status) {
             case SUCCESS:
-                LoginRes res = new LoginRes(200, "OK", result.authToken);
+                LoginRes res = new LoginRes(200, "OK", result.authToken, user.get().getName(), user.get().getSurname());
                 return ResponseEntity.ok()
                         .header("Content-Type", "application/json")
                         .body(res.toJsonString());
@@ -69,6 +73,11 @@ public class AuthPortController {
             default:
                 break;
         }
+        return ResponseEntity.ok().body("");
+    }
+
+    @PostMapping("/signOut")
+    public ResponseEntity<String> signOut(@RequestHeader("Content-Type") String contentType, @RequestBody SignOutReq req) {
         return ResponseEntity.ok().body("");
     }
 }

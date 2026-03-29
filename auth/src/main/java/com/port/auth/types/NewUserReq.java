@@ -5,14 +5,12 @@ public class NewUserReq {
     private String password;
     private String name;
     private String surname;
-    private String client_identifier;
 
-    public NewUserReq(String email, String password, String name, String surname, String client_identifier) {
+    public NewUserReq(String email, String password, String name, String surname) {
         this.email = email;
         this.password = password;
         this.name = name;
         this.surname = surname;
-        this.client_identifier = client_identifier;
     }
 
     public String getEmail() {
@@ -29,10 +27,6 @@ public class NewUserReq {
 
     public String getSurname() {
         return this.surname;
-    }
-
-    public String getClientIdentifier() {
-        return this.client_identifier;
     }
 
 }
