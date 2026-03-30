@@ -18,6 +18,7 @@ import com.port.auth.types.NewUserRes;
 import com.port.auth.types.SignOutReq;
 import com.port.auth.types.User;
 import com.port.auth.types.ValidateReq;
+import com.port.auth.types.ValidateRes;
 
 @RestController
 public class AuthPortController {
@@ -113,7 +114,10 @@ public class AuthPortController {
         if (!this.st.validateUserToken(req.getAuthToken(), req.getEmail())) {
             return ResponseEntity.status(401).body("Unauthorized");
         }
-        return ResponseEntity.ok().body("OK");
+
+        Optional<User> user = this.st.getUserWithEmail(req.getEmail());
+        ValidateRes res = new ValidateRes(user.get().getName(), user.get().getSurname(), user.get().getEmail());
+        return ResponseEntity.ok().body(res.toJsonString());
     }
 
     @GetMapping("health")
