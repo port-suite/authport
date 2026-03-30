@@ -1,6 +1,7 @@
 package com.port.auth;
 
 import java.util.Optional;
+import java.util.regex.Pattern;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -124,5 +125,19 @@ public class AuthPortController {
     public ResponseEntity<String> health() {
         String response = "{\"status\": \"OK\"}";
         return ResponseEntity.ok().body(response);
+    }
+
+    @GetMapping("/validate")
+    public ResponseEntity<String> validateToken(@RequestHeader("Authorization") String authorization) {
+        String bearer = authorization.split(Pattern.quote(" "))[0];
+        if (!bearer.equals("Bearer")) {
+            return ResponseEntity.status(400).body("Bad request");
+        }
+        String authToken = authorization.split(Pattern.quote(" "))[1];
+        Optional<User> user = this.st.getUserWithToken(authToken);
+        if (user.isEmpty()) {
+            return ResponseEntity.status(401).body("Unauthorized");
+        }
+        return ResponseEntity.ok().body(user.get().toJsonString());
     }
 }

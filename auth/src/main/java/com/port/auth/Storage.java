@@ -177,15 +177,44 @@ public class Storage {
             return false;
         }
 
-        if (!ak.getClientToken().equals(tokens[1])){
+        if (!ak.getClientToken().equals(tokens[1])) {
             return false;
         }
-        
+
         long currentTime = Instant.now().getEpochSecond();
         if (currentTime > ak.getTokenExpiryDate()) {
             this.signOutUser(email, ak.getClientIdentifier(), ak.getIpAddr());
             return false;
         }
         return true;
+    }
+
+    public Optional<User> getUserWithToken(String authToken) {
+        try {
+            String[] tokens = authToken.split(Pattern.quote("+"));
+            AuthKey ak = null;
+            String getAuthKeyQuery = "SELECT * FROM auth_key WHERE user_token = '%s' AND client_token = '%s'";
+            ResultSet authKeyRs = this.statement.executeQuery(String.format(getAuthKeyQuery, tokens[0], tokens[1]));
+            while (authKeyRs.next()) {
+                ak = new AuthKey(authKeyRs.getInt("id"), authKeyRs.getString("ip_addr"),
+                        authKeyRs.getString("user_token"),
+                        authKeyRs.getString("client_token"), authKeyRs.getInt("token_expiry_date"),
+                        authKeyRs.getString("client_identifier"));
+            }
+            if (ak == null) {
+                return Optional.empty();
+            }
+            String getUserQuery = "SELECT * FROM user WHERE auth_token = '%s'";
+            ResultSet userRs = this.statement.executeQuery(String.format(getUserQuery, tokens[0]));
+            while (userRs.next()) {
+                User user = new User(userRs.getString("email"), userRs.getString("password"), userRs.getString("name"),
+                        userRs.getString("surname"), userRs.getInt("id"), userRs.getString("auth_token"),
+                        userRs.getInt("logged_in_count"));
+                return Optional.of(user);
+            }
+        } catch (SQLException e) {
+            return Optional.empty();
+        }
+        return Optional.empty();
     }
 }

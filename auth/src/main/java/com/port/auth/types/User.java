@@ -59,4 +59,15 @@ public class User {
     public void decrementLoggedInCount() {
         this.logged_in_count--;
     }
+
+    public String toJsonString() {
+        String res = "{\n";
+        res += "\t\"name\":  \"" + this.getName() + "\",\n";
+        res += "\t\"surname\": " + "\"" + this.getSurname() + "\",\n";
+        res += "\t\"email\": " + "\"" + this.getEmail() + "\",\n";
+        res += "\t\"id\": " + this.getId() + ",\n";
+        res += "\t\"logged_in_count\": " +  this.getLoggedInCount() + ",\n";
+        res += "\t\"auth_token\": " + "\"" + this.getAuthToken() + "\"\n}";
+        return res;
+    }
 }
